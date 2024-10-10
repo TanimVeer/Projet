@@ -1,52 +1,103 @@
 #include<stdio.h>
 #include<string.h>
-#include<stdlib.h>
-#pragma warning (disable : 4996 6031)
+#include <stdlib.h>
+#pragma warning(disable : 4996 6031)
 
-enum { NOM_CHAR_MAX = 30, ETU_MAX = 100, ABSENCES_MAX = 5, JUSTIFICATIF_CHAR_MAX = 50 };
-char input [NOM_CHAR_MAX];
+enum { MAX_CHAR = 50, NOM_CHAR_MAX = 30, ETU_MAX = 100, JOUR_MAX = 40, ABSENCES_MAX = 5 };
 
-// C1
-void inscription(){
+typedef struct {
     char nom[NOM_CHAR_MAX];
     int groupe;
-    static int cpt = 0;
+} Etudiant;
 
-    scanf("%s %d", nom, &groupe);
-    if (strstr(input, inscription) != 0) {
-        cpt++;
-        printf("Inscription enregistree (%d)\n", cpt);
+typedef struct {
+    int jour;
+    char demi_journee[3];
+    int justifiee;          
+} Absence;
+
+Etudiant etudiants[ETU_MAX];
+Absence absences[ABSENCES_MAX];
+
+int nbEtu = 0;
+int nbAbsences = 0;
+
+/* --------------------------------------------------------------------------------------------------- */
+
+void inscription(const char* nom, int groupe) {
+    // Vérification des doublons
+    for (int i = 0; i < nbEtu; i++) {
+        if (strcmp(etudiants[i].nom, nom) == 0 && etudiants[i].groupe == groupe) {
+            printf("Nom incorrect\n");
+            return;
+        }
     }
-    else if (nom > NOM_CHAR_MAX) {
-        printf("Nom incorrect\n");
+
+
+    if (nbEtu < ETU_MAX) {
+        strncpy(etudiants[nbEtu].nom, nom, NOM_CHAR_MAX);
+        etudiants[nbEtu].nom[NOM_CHAR_MAX - 1] = '\0';
+        etudiants[nbEtu].groupe = groupe;
+        printf("Inscription enregistree (%d)\n", nbEtu + 1);
+        nbEtu++;
     }
-    else if (strstr(input, inscription) != 1) {
-        printf("Erreur\n");
+    else {
+        printf("Limite d'étudiants atteinte.\n");
     }
 }
 
+/* --------------------------------------------------------------------------------------------------- */
 
+void gestion_absences(int nbEtu, int jour, char demi_journee) {
+    for (int i = 0; i < nbAbsences; i++) {
+        if (strcmp(absences[i].demi_journee, demi_journee) == 0 && absences[i].jour == jour && nbEtu == nbEtu) {
+            printf("Absence deja connue\n");
+            return;
+        }
+    }
+
+    if (nbAbsences < ABSENCES_MAX) {
+        strncpy(absences[nbAbsences].demi_journee, demi_journee, ABSENCES_MAX);
+        strncpy(absences[i].jour, jour, JOUR_MAX);
+        printf("Absence enregistree [%d]\n", nbAbsences + 1);
+        nbAbsences++;
+    }
+    else {
+        printf("Limite d'étudiants atteinte.\n");
+    }
+}
+
+/* --------------------------------------------------------------------------------------------------- */
 
 int main() {
-    do {
-        printf("Choisir une fonction : inscription, absence, etudiants, justificatif, defaillants, exit\n");
-        scanf("%s", &input);
+    char input[MAX_CHAR];
+    char nom[NOM_CHAR_MAX];
+    int groupe;
+    int jour;
+    char demi_journee[3];
+    printf("Choisir une fonction : inscription, absence, etudiants, justificatif, defaillants, exit\n");
 
+    do {
+        scanf("%s", input);
+
+        // C1
         if (strcmp(input, "inscription") == 0) {
-            inscription();
+            scanf("%s %d", nom, &groupe);
+            inscription(nom, groupe);
         }
-        /* else if (strcmp(input, "absence") == 0) {
-            absences();
+
+        //C2
+        if (strcmp(input, "absence") == 0) {
+            scanf("%d %d %s", &nbEtu, &jour, demi_journee);
+            gestion_absences(nbEtu, jour, demi_journee);
         }
-        else if (strcmp(input, "etudiants") == 0) {
-            etudiants();
-        }
-        else if (strcmp(input, "justificatif") == 0) {
-            justificatif();
-        }
-        else if (strcmp(input, "defaillants") == 0) {
-            defaillants();
-        } */
+
+        //C3
+
+
+
+
+
         else {
             printf("Commande inconnue\n");
         }
