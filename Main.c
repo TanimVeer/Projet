@@ -90,6 +90,50 @@ void gestion_absences(int identifiant, int jour, char* demi_journee) {
 
 /* --------------------------------------------------------------------------------------------------- */
 
+void listes(int jour_courant) {
+    // Vérification du jour courant
+    if (jour_courant < 1) {
+        printf("Date incorrecte\n");
+        return;
+    }
+
+    // Vérification s'il y a des étudiants inscrits
+    if (nbEtu == 0) {
+        printf("Aucun inscrit\n");
+        return;
+    }
+
+    // Tableau pour stocker le nombre d'absences pour chaque étudiant
+    int absencesCount[ETU_MAX] = { 0 };
+
+    // Calcul des absences pour chaque étudiant
+    for (int i = 0; i < nbAbsences; i++) {
+        if (absences[i].jour <= jour_courant) {
+            absencesCount[absences[i].identifiant - 1]++; // On utilise identifiant - 1 pour accéder au bon index
+        }
+    }
+
+    // Tri des étudiants par groupe croissant et par nom
+    for (int i = 0; i < nbEtu - 1; i++) {
+        for (int j = i + 1; j < nbEtu; j++) {
+            if (etudiants[i].groupe > etudiants[j].groupe ||
+                (etudiants[i].groupe == etudiants[j].groupe && strcmp(etudiants[i].nom, etudiants[j].nom) > 0)) {
+                Etudiant temp = etudiants[i];
+                etudiants[i] = etudiants[j];
+                etudiants[j] = temp;
+            }
+        }
+    }
+
+    // Affichage des étudiants
+    printf("Liste des etudiants :\n");
+    for (int i = 0; i < nbEtu; i++) {
+        printf("(%d) %-15s %3d %2d\n", i + 1, etudiants[i].nom, etudiants[i].groupe, absencesCount[i]);
+    }
+}
+
+/* --------------------------------------------------------------------------------------------------- */
+
 int main() {
     char input[MAX_CHAR];
     char nom[NOM_CHAR_MAX];
@@ -98,13 +142,18 @@ int main() {
     int jour;
     char demi_journee[3];
 
-    printf("Choisir une fonction : inscription, absence, exit\n");
+    printf("Choisir une fonction : inscription, absence, listes, exit\n");
 
     while (1) {
         scanf("%s", input);
 
+        // C0 - Sortie
+        if (strcmp(input, "exit") == 0) {
+            break;  // Sortir de la boucle
+        }
+
         // C1 - Inscription
-        if (strcmp(input, "inscription") == 0) {
+        else if (strcmp(input, "inscription") == 0) {
             scanf("%s %d", nom, &groupe);
             inscription(nom, groupe);
         }
@@ -115,9 +164,16 @@ int main() {
             gestion_absences(identifiant, jour, demi_journee);
         }
 
-        // C0 - Sortie
-        else if (strcmp(input, "exit") == 0) {
-            break;  // Sortir de la boucle
+        // C3 - Liste des etudiants
+        else if (strcmp(input, "listes") == 0) {
+            scanf("%d", &jour);
+            listes(jour);
+        }
+
+        // C4 - Justificatif
+        else if (strcmp(input, "justificatif") == 0) {
+            scanf("%d", ??, &jour, justification);
+            listes(jour);
         }
 
         // Commande inconnue
