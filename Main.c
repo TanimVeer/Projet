@@ -3,35 +3,33 @@
 #include<stdlib.h>
 #pragma warning (disable : 4996 6031)
 
-enum {CHAR_MAX = 30};
-enum {MAX_ETU = 100};
-enum {MAX_ABSENCES = 5};
+enum { NOM_CHAR_MAX = 30, ETU_MAX = 100, ABSENCES_MAX = 5, JUSTIFICATIF_CHAR_MAX = 50 };
+char input [NOM_CHAR_MAX];
 
 // C1
-
-/*
-void inscription{
-    char prenom[CHAR_MAX];
+void inscription(){
+    char nom[NOM_CHAR_MAX];
     int groupe;
-    int cpt = 0;
-    if (strcmp(input, "inscription") == 0) {
-        scanf("%s %d", prenom, &groupe);
-        if (strstr(input, inscription) != 0) {
-            cpt++;
-            printf("Inscription enregistree (%d)", cpt);
-        }
-        else {
-            printf("Nom incorrect);
-        }
+    static int cpt = 0;
+
+    scanf("%s %d", nom, &groupe);
+    if (strstr(input, inscription) != 0) {
+        cpt++;
+        printf("Inscription enregistree (%d)\n", cpt);
+    }
+    else if (nom > NOM_CHAR_MAX) {
+        printf("Nom incorrect\n");
+    }
+    else if (strstr(input, inscription) != 1) {
+        printf("Erreur\n");
     }
 }
-*/
+
 
 
 int main() {
-    char input[CHAR_MAX];
     do {
-        printf("Choisir une fonction : (inscription, absence, etudiants, justificatif, defaillants, exit) : ");
+        printf("Choisir une fonction : inscription, absence, etudiants, justificatif, defaillants, exit\n");
         scanf("%s", &input);
 
         if (strcmp(input, "inscription") == 0) {
