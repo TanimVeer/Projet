@@ -3,7 +3,17 @@
 #include <stdlib.h>
 #pragma warning(disable : 4996 6031)
 
-enum { MAX_CHAR = 50, NOM_CHAR_MAX = 30, ETU_MAX = 100, JOUR_MAX = 40, ABSENCES_MAX = 5 };
+enum { 
+    MIN_CHAR = 1,
+    MAX_CHAR = 50,
+    NOM_CHAR_MAX = 30,
+    ETU_MIN = 1,
+    ETU_MAX = 100,
+    JOUR_MIN = 1,
+    JOUR_MAX = 40,
+    ABSENCES_MAX = 5,
+    DEMI_JOURNEE_MAX = 3,
+};
 
 typedef struct {
     char nom[NOM_CHAR_MAX];
@@ -11,34 +21,39 @@ typedef struct {
 } Etudiant;
 
 typedef struct {
-    int identifiant; // Ajout de l'identifiant de l'étudiant
+    int identifiant; 
     int jour;
-    char demi_journee[3];
+    char demi_journee[DEMI_JOURNEE_MAX];
+    char justification[MAX_CHAR];
 } Absence;
 
-Etudiant etudiants[ETU_MAX];
-Absence absences[ABSENCES_MAX];
+typedef struct {
+    Etudiant etudiants[ETU_MAX];
+    unsigned int cpt_etu;
+} ListEtu;
 
-int nbEtu = 0;
-int nbAbsences = 0;
+typedef struct {
+    Absence absences[ABSENCES_MAX];
+    unsigned int cpt_absence;
+} ListAbsences;
 
 /* --------------------------------------------------------------------------------------------------- */
 
-void inscription(const char* nom, int groupe) {
+void inscription(ListEtu* listEtu, const char* nom, int groupe) {
     // Vérification des doublons
-    for (int i = 0; i < nbEtu; i++) {
-        if (strcmp(etudiants[i].nom, nom) == 0 && etudiants[i].groupe == groupe) {
+    for (int i = 0; i < listEtu->cpt_etu; i++) {
+        if (strcmp(listEtu->etudiants[i].nom, nom) == 0 && listEtu->etudiants[i].groupe == groupe) {
             printf("Nom incorrect\n");
             return;
         }
     }
 
-    if (nbEtu < ETU_MAX) {
-        strncpy(etudiants[nbEtu].nom, nom, NOM_CHAR_MAX);
-        etudiants[nbEtu].nom[NOM_CHAR_MAX - 1] = '\0';
-        etudiants[nbEtu].groupe = groupe;
-        printf("Inscription enregistree (%d)\n", nbEtu + 1);
-        nbEtu++;
+    if (listEtu->cpt_etu < ETU_MAX) {
+        strncpy(listEtu->etudiants[listEtu->cpt_etu].nom, nom, NOM_CHAR_MAX);
+        listEtu->etudiants[listEtu->cpt_etu].nom[NOM_CHAR_MAX - 1] = '\0';
+        listEtu->etudiants[listEtu->cpt_etu].groupe = groupe;
+        printf("Inscription enregistree (%d)\n", listEtu->cpt_etu + 1);
+        listEtu->cpt_etu++;
     }
     else {
         printf("Limite d'étudiants atteinte.\n");
@@ -47,15 +62,15 @@ void inscription(const char* nom, int groupe) {
 
 /* --------------------------------------------------------------------------------------------------- */
 
-void gestion_absences(int identifiant, int jour, char* demi_journee) {
+void enregistrer_absences(ListAbsences* listabsence, ListEtu* listetu, int identifiant, int jour, char* demi_journee) {
     // Vérification de l'identifiant
-    if (identifiant < 1 || identifiant > nbEtu) {
+    if (identifiant < ETU_MIN || identifiant > listetu->cpt_etu) {
         printf("Identifiant incorrect\n");
         return;
     }
 
     // Vérification du jour
-    if (jour < 1 || jour > 40) {
+    if (jour < JOUR_MIN || jour > JOUR_MAX) {
         printf("Date incorrecte\n");
         return;
     }
@@ -67,21 +82,21 @@ void gestion_absences(int identifiant, int jour, char* demi_journee) {
     }
 
     // Vérification si l'absence est déjà connue
-    for (int i = 0; i < nbAbsences; i++) {
-        if (absences[i].identifiant == identifiant && absences[i].jour == jour && strcmp(absences[i].demi_journee, demi_journee) == 0) {
+    for (int i = 0; i < listabsence->cpt_absence; i++) {
+        if (listabsence->absences[i].identifiant == identifiant && listabsence->absences[i].jour == jour && strcmp(listabsence->absences[i].demi_journee, demi_journee) == 0) {
             printf("Absence deja connue\n");
             return;
         }
     }
 
     // Enregistrement de la nouvelle absence
-    if (nbAbsences < ABSENCES_MAX) {
-        absences[nbAbsences].identifiant = identifiant;
-        absences[nbAbsences].jour = jour;
-        strncpy(absences[nbAbsences].demi_journee, demi_journee, sizeof(absences[nbAbsences].demi_journee));
-        absences[nbAbsences].demi_journee[sizeof(absences[nbAbsences].demi_journee) - 1] = '\0'; // S'assurer que la chaîne est bien terminée
-        printf("Absence enregistree [%d]\n", nbAbsences + 1);
-        nbAbsences++;
+    if (listabsence->cpt_absence < ABSENCES_MAX) {
+        listabsence->absences[listabsence->cpt_absence].identifiant = identifiant;
+        listabsence->absences[listabsence->cpt_absence].jour = jour;
+        strncpy(listabsence->absences[listabsence->cpt_absence].demi_journee, demi_journee, sizeof(listabsence->absences[listabsence->cpt_absence].demi_journee));
+        listabsence->absences[listabsence->cpt_absence].demi_journee[sizeof(listabsence->absences[listabsence->cpt_absence].demi_journee) - 1] = '\0'; // S'assurer que la chaîne est bien terminée
+        printf("Absence enregistree [%d]\n", listabsence->cpt_absence + 1);
+        listabsence->cpt_absence++;
     }
     else {
         printf("Limite d'absences atteinte.\n");
@@ -90,15 +105,22 @@ void gestion_absences(int identifiant, int jour, char* demi_journee) {
 
 /* --------------------------------------------------------------------------------------------------- */
 
-void listes(int jour_courant) {
+int tri(Etudiant* etudiant1, Etudiant* etudiant2) {
+    if (etudiant1->groupe != etudiant2->groupe) {
+        return(etudiant1->groupe - etudiant2->groupe);
+    } 
+    return(strcmp(etudiant1->nom, etudiant2->nom));
+}
+
+void listes(ListEtu* listetu, ListAbsences* listeabsences, int jour_courant) {
     // Vérification du jour courant
-    if (jour_courant < 1) {
+    if (jour_courant < JOUR_MIN) {
         printf("Date incorrecte\n");
         return;
     }
 
     // Vérification s'il y a des étudiants inscrits
-    if (nbEtu == 0) {
+    if (listetu->cpt_etu == 0) {
         printf("Aucun inscrit\n");
         return;
     }
@@ -107,42 +129,50 @@ void listes(int jour_courant) {
     int absencesCount[ETU_MAX] = { 0 };
 
     // Calcul des absences pour chaque étudiant
-    for (int i = 0; i < nbAbsences; i++) {
-        if (absences[i].jour <= jour_courant) {
-            absencesCount[absences[i].identifiant - 1]++; // On utilise identifiant - 1 pour accéder au bon index
+    for (int i = 0; i < listeabsences->cpt_absence; i++) {
+        if (listeabsences->absences[i].jour <= jour_courant) {
+            absencesCount[listeabsences->absences[i].identifiant - 1]++;
         }
     }
 
     // Tri des étudiants par groupe croissant et par nom
-    for (int i = 0; i < nbEtu - 1; i++) {
-        for (int j = i + 1; j < nbEtu; j++) {
-            if (etudiants[i].groupe > etudiants[j].groupe ||
-                (etudiants[i].groupe == etudiants[j].groupe && strcmp(etudiants[i].nom, etudiants[j].nom) > 0)) {
-                Etudiant temp = etudiants[i];
-                etudiants[i] = etudiants[j];
-                etudiants[j] = temp;
-            }
-        }
-    }
+    qsort(listetu->etudiants, ETU_MAX, sizeof(Etudiant), tri);
 
     // Affichage des étudiants
     printf("Liste des etudiants :\n");
-    for (int i = 0; i < nbEtu; i++) {
-        printf("(%d) %-15s %3d %2d\n", i + 1, etudiants[i].nom, etudiants[i].groupe, absencesCount[i]);
+    for (int i = 0; i < listetu->cpt_etu; i++) {
+        printf("(%d) %-15s %3d %2d\n", i + 1, listetu->etudiants[i].nom, listetu->etudiants[i].groupe, absencesCount[i]);
+    }
+}
+
+/* --------------------------------------------------------------------------------------------------- */
+
+void justificatif(int identifiant, int jour, char justification) {
+    if (identifiant < ETU_MIN) {
+        printf("Identifiant incorrect");
+    }
+    else if (jour < JOUR_MIN) {
+        printf("Date incorrecte");
+    }
+    else if (justificatif > MAX_CHAR) {
+        printf("Justification trop long, charactère max : 50");
     }
 }
 
 /* --------------------------------------------------------------------------------------------------- */
 
 int main() {
+    ListEtu* listetu;
+    ListAbsences* listabsence;
     char input[MAX_CHAR];
     char nom[NOM_CHAR_MAX];
     int groupe;
     int identifiant; // Identifiant de l'étudiant
     int jour;
     char demi_journee[3];
+    char justification[50];
 
-    printf("Choisir une fonction : inscription, absence, listes, exit\n");
+    printf("Choisir une fonction : inscription, absence, listes, justificatif, exit \n");
 
     while (1) {
         scanf("%s", input);
@@ -155,25 +185,25 @@ int main() {
         // C1 - Inscription
         else if (strcmp(input, "inscription") == 0) {
             scanf("%s %d", nom, &groupe);
-            inscription(nom, groupe);
+            inscription(&listetu, nom, groupe);
         }
 
-        // C2 - Gestion des absences
+        // C2 - Enregistrement des absences
         else if (strcmp(input, "absence") == 0) {
             scanf("%d %d %s", &identifiant, &jour, demi_journee);
-            gestion_absences(identifiant, jour, demi_journee);
+            enregistrer_absences(&listetu, &listabsence, identifiant, jour, demi_journee);
         }
 
         // C3 - Liste des etudiants
         else if (strcmp(input, "listes") == 0) {
             scanf("%d", &jour);
-            listes(jour);
+            listes(&listetu, &listabsence, jour);
         }
 
         // C4 - Justificatif
         else if (strcmp(input, "justificatif") == 0) {
-            scanf("%d", ??, &jour, justification);
-            listes(jour);
+            scanf("%d %d %s", &identifiant, &jour, justification);
+            // justificatif();
         }
 
         // Commande inconnue
