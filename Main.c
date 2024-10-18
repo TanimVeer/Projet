@@ -33,6 +33,7 @@ typedef struct {
 
 typedef struct {
     Etudiant etudiants[ETU_MAX];
+    int ordre_etudiants[ETU_MAX];
     unsigned int cpt_etu;
 } ListEtu;
 
@@ -53,9 +54,9 @@ void inscription(ListEtu* listEtu, const char* nom, int groupe) {
 
     if (listEtu->cpt_etu < ETU_MAX) {
         strcpy(listEtu->etudiants[listEtu->cpt_etu].nom, nom);
-        listEtu->etudiants[listEtu->cpt_etu].nom[NOM_CHAR_MAX] = '\0';
         listEtu->etudiants[listEtu->cpt_etu].groupe = groupe;
         listEtu->etudiants[listEtu->cpt_etu].absences_non_justifiees = 0;
+        listEtu->ordre_etudiants[listEtu->cpt_etu] = listEtu->cpt_etu;
         printf("Inscription enregistree (%d)\n", listEtu->cpt_etu + 1);
         listEtu->cpt_etu++;
     }
@@ -93,7 +94,7 @@ void enregistrer_absences(ListAbsences* listabsence, ListEtu* listetu, int ident
     if (listabsence->cpt_absence < ABSENCES_MAX) {
         listabsence->absences[listabsence->cpt_absence].identifiant = identifiant;
         listabsence->absences[listabsence->cpt_absence].jour = jour;
-        strncpy(listabsence->absences[listabsence->cpt_absence].demi_journee, demi_journee, DEMI_JOURNEE_MAX);
+        strcpy(listabsence->absences[listabsence->cpt_absence].demi_journee, demi_journee);
         listabsence->cpt_absence++;
         listetu->etudiants[identifiant].absences_non_justifiees++;
         printf("Absence enregistree [%d]\n", listabsence->cpt_absence);
@@ -136,6 +137,13 @@ void listes(ListEtu* listetu, ListAbsences* listeabsences, int jour_courant) {
     for (int i = 0; i < listetu->cpt_etu; i++) {
         printf("(%d) %s %d %d\n", i+1, listetu->etudiants[i].nom, listetu->etudiants[i].groupe, absencesParEtu[i]);
     }
+
+    /*
+    for (int i = 0; i < listetu->cpt_etu; i++) {
+        int index = listetu->ordre_etudiants[i];
+        printf("(%d) %s %d %d\n", index + 1, listetu->etudiants[index].nom, listetu->etudiants[index].groupe, absencesParEtu[index]);
+    }
+    */
 }
 
 /* --------------------------------------------------------------------------------------------------- */
