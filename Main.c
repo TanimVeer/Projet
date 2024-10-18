@@ -168,13 +168,54 @@ void justificatif(ListAbsences* listabsence, int identifiant, int jour, char* ju
 
     strcpy(listabsence->absences[identifiant].justification, justification);
     listabsence->absences[identifiant].justification_jour = jour;
+    listabsence->absences[identifiant].justifie = 0;
     printf("Justificatif enregistre\n");
 }
 
 /* --------------------------------------------------------------------------------------------------- */
 
-void validations() {
-//    printf("[%d] (%d) %s %d %d/%s (%s)", ?? );
+void validations(ListEtu* listetu, ListAbsences* listeabsences) {
+    int validation = 0; 
+
+    for (int i = 0; i < listeabsences->cpt_absence; i++) {
+        if (listeabsences->absences[i].justifie == 0) { 
+            validation = 1; 
+            int identifiant = listeabsences->absences[i].identifiant;
+            printf("[%d] (%d) %s %d %d/%s (%s)\n",
+                listeabsences->absences[i].identifiant,
+                identifiant,
+                listetu->etudiants[identifiant].nom,
+                listetu->etudiants[identifiant].groupe,
+                listeabsences->absences[i].jour,
+                listeabsences->absences[i].demi_journee,
+                listeabsences->absences[i].justification);
+        }
+    }
+    if (validation != 0) {
+        printf("Aucune validation en attente\n"); 
+        }
+}
+
+/* --------------------------------------------------------------------------------------------------- */
+
+void validation_justificatif(ListAbsences* listeabsences, int identifiant, const char* verdict) {
+    if (identifiant < 0 || identifiant >= listeabsences->cpt_absence) {
+        printf("Identifiant incorrect\n");
+        return;
+    }
+
+    if (listeabsences->absences[identifiant].justifie != 0) {
+        printf("Validation deja connue\n");
+        return;
+    }
+
+    if (strcmp(verdict, "ok") != 0 && strcmp(verdict, "ko") != 0) {
+        printf("Code incorrect\n");
+        return;
+    }
+
+    listeabsences->absences[identifiant].justifie = (strcmp(verdict, "ok") == 0) ? 1 : -1;
+    printf("Validation enregistree\n");
 }
 
 /* --------------------------------------------------------------------------------------------------- */
@@ -227,8 +268,17 @@ int main() {
 
         // C5 - Absences en attente de validation
         else if (strcmp(input, "validations") == 0) {
-            validations();
+            validations(&listetu, &listabsence);
         }
+
+        // C6 - Validation/invalidation d’un justificatif
+        else if (strcmp(input, "validation") == 0) {
+            int id_absence;
+            char verdict[3];
+            scanf("%d %s", &id_absence, verdict);
+            validation_justificatif(&listabsence, id_absence - 1, verdict); // id_absence - 1 pour indexer
+        }
+
 
         // Commande inconnue
         else {
