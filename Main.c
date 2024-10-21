@@ -14,12 +14,14 @@ enum {
     ABSENCES_MAX = 5,
     DEMI_JOURNEE_MAX = 3,
     JUSTI_MAX = 50,
+    CHAR_RESULTAT = 3
 };
 
 typedef struct {
     char nom[NOM_CHAR_MAX];
     int groupe;
     int absences_non_justifiees;
+    int ordre_etudiants;
 } Etudiant;
 
 typedef struct {
@@ -56,7 +58,7 @@ void inscription(ListEtu* listEtu, const char* nom, int groupe) {
         strcpy(listEtu->etudiants[listEtu->cpt_etu].nom, nom);
         listEtu->etudiants[listEtu->cpt_etu].groupe = groupe;
         listEtu->etudiants[listEtu->cpt_etu].absences_non_justifiees = 0;
-        listEtu->ordre_etudiants[listEtu->cpt_etu] = listEtu->cpt_etu;
+        listEtu->etudiants[listEtu->cpt_etu].ordre_etudiants = listEtu->cpt_etu + 1;
         printf("Inscription enregistree (%d)\n", listEtu->cpt_etu + 1);
         listEtu->cpt_etu++;
     }
@@ -95,6 +97,7 @@ void enregistrer_absences(ListAbsences* listabsence, ListEtu* listetu, int ident
         listabsence->absences[listabsence->cpt_absence].identifiant = identifiant;
         listabsence->absences[listabsence->cpt_absence].jour = jour;
         strcpy(listabsence->absences[listabsence->cpt_absence].demi_journee, demi_journee);
+        listabsence->absences[listabsence->cpt_absence].justifie = 0;
         listabsence->cpt_absence++;
         listetu->etudiants[identifiant].absences_non_justifiees++;
         printf("Absence enregistree [%d]\n", listabsence->cpt_absence);
@@ -133,42 +136,38 @@ void listes(ListEtu* listetu, ListAbsences* listeabsences, int jour_courant) {
     }
 
     qsort(listetu->etudiants, listetu->cpt_etu, sizeof(Etudiant), tri);
-
     for (int i = 0; i < listetu->cpt_etu; i++) {
-        printf("(%d) %s %d %d\n", i+1, listetu->etudiants[i].nom, listetu->etudiants[i].groupe, absencesParEtu[i]);
+        printf("(%d) %s %d %d\n", listetu->etudiants[i].ordre_etudiants, listetu->etudiants[i].nom, listetu->etudiants[i].groupe, absencesParEtu[i]);
     }
-
-    /*
-    for (int i = 0; i < listetu->cpt_etu; i++) {
-        int index = listetu->ordre_etudiants[i];
-        printf("(%d) %s %d %d\n", index + 1, listetu->etudiants[index].nom, listetu->etudiants[index].groupe, absencesParEtu[index]);
-    }
-    */
 }
 
 /* --------------------------------------------------------------------------------------------------- */
 
-void justificatif(ListAbsences* listabsence, int identifiant, int jour, char* justification) {
-    if (identifiant < ETU_MIN || identifiant > ETU_MAX) {
+void justificatif(ListAbsences* listabsence, int id_absence, int jour, char* justification) {
+    size_t len = strlen(justification);
+    if (justification[len-1] == '\n') {
+        justification[len-1] = '\0';
+    }
+    if (id_absence < ETU_MIN || id_absence > ETU_MAX) {
         printf("Identifiant incorrect");
         return;
     }
     
-    if (jour < JOUR_MIN || jour > JOUR_MAX) {
+    if (jour < JOUR_MIN) {
         printf("Date incorrecte");
         return;
     }
 
     for (int i = 0; i < listabsence->cpt_absence; i++) {
-        if (listabsence->absences[i].identifiant == identifiant && strcmp(listabsence->absences[i].justification, justification) == 0) {
+        if (listabsence->absences[i].identifiant == id_absence && strcmp(listabsence->absences[i].justification, justification) == 0) {
             printf("Justificatif deja connu\n");
             return;
         }
     }
 
-    strcpy(listabsence->absences[identifiant].justification, justification);
-    listabsence->absences[identifiant].justification_jour = jour;
-    listabsence->absences[identifiant].justifie = 0;
+    strncpy(listabsence->absences[id_absence-1].justification, justification, JUSTI_MAX);
+    listabsence->absences[id_absence-1].justification_jour = jour;
+    listabsence->absences[id_absence-1].justifie = 0;
     printf("Justificatif enregistre\n");
 }
 
@@ -180,42 +179,170 @@ void validations(ListEtu* listetu, ListAbsences* listeabsences) {
     for (int i = 0; i < listeabsences->cpt_absence; i++) {
         if (listeabsences->absences[i].justifie == 0) { 
             validation = 1; 
+
             int identifiant = listeabsences->absences[i].identifiant;
+
             printf("[%d] (%d) %s %d %d/%s (%s)\n",
                 listeabsences->absences[i].identifiant,
-                identifiant,
-                listetu->etudiants[identifiant].nom,
-                listetu->etudiants[identifiant].groupe,
+                listetu->etudiants[i].ordre_etudiants,
+                listetu->etudiants[i].nom,
+                listetu->etudiants[i].groupe,
                 listeabsences->absences[i].jour,
                 listeabsences->absences[i].demi_journee,
                 listeabsences->absences[i].justification);
         }
     }
-    if (validation != 0) {
+
+    if (!validation) {
         printf("Aucune validation en attente\n"); 
-        }
+    }
 }
 
 /* --------------------------------------------------------------------------------------------------- */
 
-void validation_justificatif(ListAbsences* listeabsences, int identifiant, const char* verdict) {
-    if (identifiant < 0 || identifiant >= listeabsences->cpt_absence) {
+void validation_justificatif(ListAbsences* listeabsences, int id_absence, const char* resultat) {
+    if (id_absence < 0 || id_absence >= listeabsences->cpt_absence) {
         printf("Identifiant incorrect\n");
         return;
     }
 
-    if (listeabsences->absences[identifiant].justifie != 0) {
+    if (listeabsences->absences[id_absence].justifie != 0) {
         printf("Validation deja connue\n");
         return;
     }
 
-    if (strcmp(verdict, "ok") != 0 && strcmp(verdict, "ko") != 0) {
+    if (strcmp(resultat, "ok") != 0 && strcmp(resultat, "ko") != 0) {
         printf("Code incorrect\n");
         return;
     }
 
-    listeabsences->absences[identifiant].justifie = (strcmp(verdict, "ok") == 0) ? 1 : -1;
-    printf("Validation enregistree\n");
+    if (strcmp(resultat, "ok") == 0) {
+        listeabsences->absences[id_absence].justifie = 1;
+        printf("Validation enregistree\n");
+    }
+    else if (strcmp(resultat, "ko") == 0) {
+        listeabsences->absences[id_absence].justifie = -1;
+        printf("Validation enregistree\n");
+    }
+}
+
+/* --------------------------------------------------------------------------------------------------- */
+
+void situation_etudiant(ListEtu* listetu, ListAbsences* listeabsences, int identifiant, int jour) {
+    if (identifiant < ETU_MIN || identifiant > listetu->cpt_etu) {
+        printf("Identifiant incorrect\n");
+        return;
+    }
+
+    if (jour < JOUR_MIN) {
+        printf("Date incorrecte\n");
+        return;
+    }
+
+    Etudiant* etudiant = &listetu->etudiants[identifiant];
+    printf("(%d) %s %d %d\n", identifiant, etudiant->nom, etudiant->groupe, etudiant->absences_non_justifiees);
+
+    Absence en_attente_justificatif[ABSENCES_MAX];
+    Absence en_attente_validation[ABSENCES_MAX];
+    Absence justifiees[ABSENCES_MAX];
+    Absence non_justifiees[ABSENCES_MAX];
+
+    int nb_attente_justificatif = 0;
+    int nb_attente_validation = 0;
+    int nb_justifiees = 0;
+    int nb_non_justifiees = 0;
+
+    for (int i = 0; i < listeabsences->cpt_absence; i++) {
+        if (listeabsences->absences[i].identifiant == identifiant && listeabsences->absences[i].jour < jour) {
+            if (listeabsences->absences[i].justifie == 0) {
+                if (strlen(listeabsences->absences[i].justification) == 0) {
+                    en_attente_justificatif[nb_attente_justificatif++] = listeabsences->absences[i];
+                }
+                else {
+                    en_attente_validation[nb_attente_validation++] = listeabsences->absences[i];
+                }
+            }
+            else if (listeabsences->absences[i].justifie == 1) {
+                justifiees[nb_justifiees++] = listeabsences->absences[i];
+            }
+            else {
+                non_justifiees[nb_non_justifiees++] = listeabsences->absences[i];
+            }
+        }
+    }
+
+    if (nb_attente_justificatif > 0) {
+        printf("- En attente justificatif\n");
+        for (int i = 0; i < nb_attente_justificatif; i++) {
+            printf("[%d] %d/%s\n",
+                en_attente_justificatif[i].identifiant,
+                en_attente_justificatif[i].jour,
+                en_attente_justificatif[i].demi_journee);
+        }
+    }
+
+    if (nb_attente_validation > 0) {
+        printf("- En attente validation\n");
+        for (int i = 0; i < nb_attente_validation; i++) {
+            printf("[%d] %d/%s (%s)\n",
+                en_attente_validation[i].identifiant,
+                en_attente_validation[i].jour,
+                en_attente_validation[i].demi_journee,
+                en_attente_validation[i].justification);
+        }
+    }
+
+    if (nb_justifiees > 0) {
+        printf("- Justifiees\n");
+        for (int i = 0; i < nb_justifiees; i++) {
+            printf("[%d] %d/%s (%s)\n",
+                justifiees[i].identifiant,
+                justifiees[i].jour,
+                justifiees[i].demi_journee,
+                justifiees[i].justification);
+        }
+    }
+
+    if (nb_non_justifiees > 0) {
+        printf("- Non-justifiees\n");
+        for (int i = 0; i < nb_non_justifiees; i++) {
+            printf("[%d] %d/%s\n",
+                non_justifiees[i].identifiant,
+                non_justifiees[i].jour,
+                non_justifiees[i].demi_journee);
+        }
+    }
+}
+
+/* --------------------------------------------------------------------------------------------------- */
+
+void liste_defaillants(ListEtu* listetu, ListAbsences* listeabsences, int jour_courant) {
+    if (jour_courant < JOUR_MIN) {
+        printf("Date incorrecte\n");
+        return;
+    }
+
+    int found_defaillant = 0;
+
+    for (int i = 0; i < listetu->cpt_etu; i++) {
+        int total_absences = 0;
+        int non_justifiees = listetu->etudiants[i].absences_non_justifiees;
+
+        for (int j = 0; j < listeabsences->cpt_absence; j++) {
+            if (listeabsences->absences[j].identifiant == i + 1 && listeabsences->absences[j].jour < jour_courant) {
+                total_absences++;
+            }
+        }
+
+        if (non_justifiees >= 5) {
+            printf("(%d) %s %d %d\n", i + 1, listetu->etudiants[i].nom, listetu->etudiants[i].groupe, total_absences);
+            found_defaillant = 1;
+        }
+    }
+
+    if (!found_defaillant) {
+        printf("Aucun defaillant\n");
+    }
 }
 
 /* --------------------------------------------------------------------------------------------------- */
@@ -274,11 +401,22 @@ int main() {
         // C6 - Validation/invalidation d’un justificatif
         else if (strcmp(input, "validation") == 0) {
             int id_absence;
-            char verdict[3];
-            scanf("%d %s", &id_absence, verdict);
-            validation_justificatif(&listabsence, id_absence - 1, verdict); // id_absence - 1 pour indexer
+            char resultat[CHAR_RESULTAT];
+            scanf("%d %s", &id_absence, resultat);
+            validation_justificatif(&listabsence, id_absence, resultat);
         }
 
+        // C7 - Situation d’un étudiant
+        else if (strcmp(input, "etudiant") == 0) {
+            scanf("%d %d", &identifiant, &jour);
+            situation_etudiant(&listetu, &listabsence, identifiant, jour);
+        }
+
+        // C8 - Liste des étudiants défaillants
+        else if (strcmp(input, "defaillants") == 0) {
+            scanf("%d", &jour);
+            liste_defaillants(&listetu, &listabsence, jour);
+        }
 
         // Commande inconnue
         else {
